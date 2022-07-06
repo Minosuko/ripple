@@ -4,7 +4,7 @@
 */
 define('DATABASE_NAME', 'ripple');
 define('DATABASE_USER', 'root');
-define('DATABASE_PASS', 'password');
+define('DATABASE_PASS', '');
 define('DATABASE_HOST', 'localhost');
 // Either host or unix_socket.
 // This is really important. On most installations, it will just work
@@ -20,8 +20,8 @@ define('DATABASE_WHAT', 'host');
 /*
  * server urls, no slash
 */
-$URL['avatar'] = 'https://a.ripple.moe';
-$URL['server'] = 'https://ripple.moe';
+$URL['avatar'] = 'https://a.zamaru.ml';
+$URL['server'] = 'https://zamaru.ml';
 /*
  * osu-submit-modular.php configuration
 */
@@ -63,12 +63,12 @@ $WebHookReport = '';
 $KeyAkerino = '';
 // Server status configuration
 $ServerStatusConfig = ['service_status' => ['enable' => true, // Must be true if you want to enable "Service status" section
-'bancho_url'                                         => 'http://127.0.0.1:5001', // Bancho URL
-'avatars_url'                                        => 'http://127.0.0.1:5000', // Avatar server URL
-'beatmap_url'                                        => 'http://bcache.zxq.co', // Beatmap mirror URL
-'api_url'                                            => 'http://127.0.0.1/api', // Ripple API URL
-], 'netdata' => ['enable'                            => true, // Must be true if you want to enable server stats (cpu, ram, ipv4 and so on)
-'server_url'                                         => 'http://127.0.0.1:19999', // Your netdata server
+'bancho_url'                                         => 'http://http://172.105.178.25:5001', // Bancho URL
+'avatars_url'                                        => 'http://http://172.105.178.25:5000', // Avatar server URL
+'beatmap_url'                                        => 'http://kitsu.moe', // Beatmap mirror URL
+'api_url'                                            => 'http://http://172.105.178.25/api', // Ripple API URL
+], 'netdata' => ['enable'                            => false, // Must be true if you want to enable server stats (cpu, ram, ipv4 and so on)
+'server_url'                                         => 'http://172.105.178.25:19999', // Your netdata server
 'header_enable'                                      => true, // Show header with main server stats
 'system_enable'                                      => true, // Show cpu/load/ram graphs
 'network_enable'                                     => true, // Show IPv4 graphss
