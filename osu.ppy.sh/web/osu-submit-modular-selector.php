@@ -55,7 +55,7 @@ try {
 	if ($_POST['x'] == 0 && $_POST['ft'] == 0) {
 		// We've finished a song
 		// Save score (and increase playcount)
-		$playID = saveScore($scoreDataArray,3);
+		$playID = saveScore($scoreDataArray);
 		// Save replay if we played in rankable mods
 		if (isRankable($scoreDataArray[13])) {
 			saveReplay($playID);
