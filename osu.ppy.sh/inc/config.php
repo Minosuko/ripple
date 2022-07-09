@@ -3,9 +3,10 @@
  * Database configuration.
 */
 define('DATABASE_NAME', 'ripple');
-define('DATABASE_USER', 'root');
+define('DATABASE_USER', 'ripple');
 define('DATABASE_PASS', '');
 define('DATABASE_HOST', 'localhost');
+define('OSU_API_TOKEN', '');
 // Either host or unix_socket.
 // This is really important. On most installations, it will just work
 // by doing DATABASE_HOST as localhost and DATABASE_WHAT as "host".
@@ -63,12 +64,12 @@ $WebHookReport = '';
 $KeyAkerino = '';
 // Server status configuration
 $ServerStatusConfig = ['service_status' => ['enable' => true, // Must be true if you want to enable "Service status" section
-'bancho_url'                                         => 'http://http://172.105.178.25:5001', // Bancho URL
-'avatars_url'                                        => 'http://http://172.105.178.25:5000', // Avatar server URL
+'bancho_url'                                         => 'http://localhost:5001', // Bancho URL
+'avatars_url'                                        => 'http://localhost:5000', // Avatar server URL
 'beatmap_url'                                        => 'http://kitsu.moe', // Beatmap mirror URL
-'api_url'                                            => 'http://http://172.105.178.25/api', // Ripple API URL
+'api_url'                                            => 'http://http://localhost/api', // Ripple API URL
 ], 'netdata' => ['enable'                            => false, // Must be true if you want to enable server stats (cpu, ram, ipv4 and so on)
-'server_url'                                         => 'http://172.105.178.25:19999', // Your netdata server
+'server_url'                                         => 'http://localhost:19999', // Your netdata server
 'header_enable'                                      => true, // Show header with main server stats
 'system_enable'                                      => true, // Show cpu/load/ram graphs
 'network_enable'                                     => true, // Show IPv4 graphss

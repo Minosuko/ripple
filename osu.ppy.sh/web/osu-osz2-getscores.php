@@ -82,7 +82,7 @@
                             // Add song to beatmaps names table only if has at least 1 score,
                             // and it's not in the db yet, because if noone has played this beatmap,
                             // it'll never be shown on top/latest rank page
-                            //if ( (count($GLOBALS["db"]->fetchAll("SELECT id FROM scores WHERE beatmap_md5 = ?", $_GET["c"])) > 0) && !($GLOBALS["db"]->fetch("SELECT id FROM beatmaps_names WHERE beatmap_md5 = ?", $_GET["c"])) )
+                            //if ( (count($GLOBALS["db"]->fetchAll("SELECT `id` FROM `scores` WHERE `beatmap_md5` = ?", $_GET["c"])) > 0) && !($GLOBALS["db"]->fetch("SELECT `id` FROM `beatmaps_names` WHERE `beatmap_md5` = ?", $_GET["c"])) )
                             //{
                                 // EDIT:
                                 // We save every beatmap to avoid scores not shown on userpages and send fokabot messages in #announce
@@ -90,9 +90,9 @@
                                 // We have scores and beatmap name isn't in the db yet, add it
                                 // (we remove last 4 chars from file name aka .osu)
                                 // Oops! Make sure the record doesn't already exit
-                                $exists = $GLOBALS['db']->fetch('SELECT id FROM beatmaps_names WHERE beatmap_md5 = ?', [$_GET['c']]);
+                                $exists = $GLOBALS['db']->fetch('SELECT `id` FROM `beatmaps_names` WHERE `beatmap_md5` = ?', [$_GET['c']]);
                             if (!$exists) {
-                                $GLOBALS['db']->execute('INSERT INTO beatmaps_names (`id`, `beatmap_md5`, `beatmap_name`) VALUES (NULL, ?, ?)', [$_GET['c'], substr($_GET['f'], 0, strlen($_GET['f']) - 4)]);
+                                $GLOBALS['db']->execute('INSERT INTO `beatmaps_names` (`id`, `beatmap_md5`, `beatmap_name`) VALUES (NULL, ?, ?)', [$_GET['c'], substr($_GET['f'], 0, strlen($_GET['f']) - 4)]);
                             }
                             //}
                         }

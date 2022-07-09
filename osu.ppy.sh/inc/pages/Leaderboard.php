@@ -33,7 +33,7 @@ class Leaderboard {
 		<th>Player</th>
 		<th>Accuracy</th>
 		<th>Playcount</th>
-		<th>Score</th>
+		<th>pp</th>
 		</tr>
 		</thead>';
 		echo '<tbody>';
@@ -70,7 +70,7 @@ class Leaderboard {
 				echo '<td><img src="./images/flags/'.$country.'.png"/>	<a href="index.php?u='.$lbUser['id'].'&m='.$m.'">'.$lbUser['username'].'</a></td>
 				<td>'.(is_numeric($lbUser['avg_accuracy_'.$modeForDB]) ? accuracy($lbUser['avg_accuracy_'.$modeForDB]) : '0.00').'%</td>
 				<td>'.number_format($lbUser['playcount_'.$modeForDB]).'<i> (lvl.'.$lbUser['level_'.$modeForDB].')</i></td>
-				<td>'.number_format($lbUser['ranked_score_'.$modeForDB]).'</td>
+				<td>'.number_format($lbUser[$modeForDB.'_pp']).'</td>
 				</tr>';
 			}
 		}
@@ -79,7 +79,7 @@ class Leaderboard {
 	}
 
 	public static function GetUserRank($u, $mode) {
-		$query = $GLOBALS['db']->fetch("SELECT position FROM leaderboard_$mode WHERE user = ?;", [$u]);
+		$query = $GLOBALS['db']->fetch("SELECT `position` FROM `leaderboard_$mode` WHERE `user` = ?;", [$u]);
 		if ($query !== false) {
 			$rank = (string) current($query);
 		} else {
@@ -89,54 +89,69 @@ class Leaderboard {
 		return $rank;
 	}
 
+	public static function GetUserMapRank($user, $hash) {
+		$query = $GLOBALS['db']->fetchAll("SELECT * FROM `scores` WHERE `beatmap_md5` = ? ORDER BY `score` DESC;", [$hash]);
+		$r = 1;
+		$user_rank = 1;
+		$n = true;
+		foreach($query as $rank){
+			if($rank['username'] == $user && $n){
+				$user_rank = $r;
+				$n = false;
+			}
+			$r++;
+		}
+		return $user_rank;
+	}
+
 	public static function BuildLeaderboard() {
 		// Declare stuff that will be used later on.
 		$modes = ['std', 'taiko', 'ctb', 'mania'];
 		$data = ['std' => [], 'taiko' => [], 'ctb' => [], 'mania' => []];
 		$allowedUsers = getAllowedUsers('id');
 		// Get all user's stats
-		$users = $GLOBALS['db']->fetchAll('SELECT id, ranked_score_std, ranked_score_taiko, ranked_score_ctb, ranked_score_mania FROM users_stats');
+		$users = $GLOBALS['db']->fetchAll('SELECT `id`, `std_pp`, `mania_pp`, `ctb_pp`, `taiko_pp` FROM `users_stats`');
 		// Put the data in the correct way into the array.
 		foreach ($users as $user) {
 			if (!$allowedUsers[$user['id']]) {
 				continue;
 			}
 			foreach ($modes as $mode) {
-				$data[$mode][] = ['user' => $user['id'], 'score' => $user['ranked_score_'.$mode]];
+				$data[$mode][] = ['user' => $user['id'], 'pp' => $user[$mode.'_pp']];
 			}
 		}
 		// We're doing the sorting for every mode.
 		foreach ($modes as $mode) {
 			// Do the sorting
 			usort($data[$mode], function ($a, $b) {
-				if ($a['score'] == $b['score']) {
+				if ($a['pp'] == $b['pp']) {
 					return 0;
 				}
 				// We're doing ? 1 : -1 because we're doing in descending order.
-				return ($a['score'] < $b['score']) ? 1 : -1;
+				return ($a['pp'] < $b['pp']) ? 1 : -1;
 			});
 			// Remove all data from the table
-			$GLOBALS['db']->execute("TRUNCATE TABLE leaderboard_$mode;");
+			$GLOBALS['db']->execute("TRUNCATE TABLE `leaderboard_$mode`;");
 			// And insert each user.
 			foreach ($data[$mode] as $key => $val) {
-				$GLOBALS['db']->execute("INSERT INTO leaderboard_$mode (position, user, v) VALUES (?, ?, ?)", [$key + 1, $val['user'], $val['score']]);
+				$GLOBALS['db']->execute("INSERT INTO `leaderboard_$mode` (`position`, `user`, `v`) VALUES (?, ?, ?)", [$key + 1, $val['user'], $val['pp']]);
 			}
 		}
 	}
 
 	public static function Update($userID, $newScore, $mode) {
 		// Who are we?
-		$us = $GLOBALS['db']->fetch("SELECT * FROM leaderboard_$mode WHERE user=?", [$userID]);
+		$us = $GLOBALS['db']->fetch("SELECT * FROM `leaderboard_$mode` WHERE `user` = ?", [$userID]);
 		$newplayer = false;
 		if (!$us) {
 			$newplayer = true;
 		}
 		// Find player who is right below our score
-		$target = $GLOBALS['db']->fetch("SELECT * FROM leaderboard_$mode WHERE v <= ? ORDER BY position ASC LIMIT 1", [$newScore]);
+		$target = $GLOBALS['db']->fetch("SELECT * FROM `leaderboard_$mode` WHERE `v` <= ? ORDER BY `position` ASC LIMIT 1", [$newScore]);
 		$plus = 0;
 		if (!$target) {
 			// Wow, this user completely sucks at this game.
-			$target = $GLOBALS['db']->fetch("SELECT * FROM leaderboard_$mode ORDER BY position DESC LIMIT 1");
+			$target = $GLOBALS['db']->fetch("SELECT * FROM `leaderboard_$mode` ORDER BY `position` DESC LIMIT 1");
 			$plus = 1;
 		}
 		// Set $newT
@@ -150,12 +165,12 @@ class Leaderboard {
 		}
 		// Make some place for the new "place holder".
 		if ($newplayer) {
-			$GLOBALS['db']->execute("UPDATE leaderboard_$mode SET position = position + 1 WHERE position >= ? ORDER BY position DESC", [$newT]);
+			$GLOBALS['db']->execute("UPDATE `leaderboard_$mode` SET `position` = `position` + 1 WHERE `position` >= ? ORDER BY `position` DESC", [$newT]);
 		} else {
-			$GLOBALS['db']->execute("DELETE FROM leaderboard_$mode WHERE user = ?", [$userID]);
-			$GLOBALS['db']->execute("UPDATE leaderboard_$mode SET position = position + 1 WHERE position < ? AND position >= ? ORDER BY position DESC", [$us['position'], $newT]);
+			$GLOBALS['db']->execute("DELETE FROM `leaderboard_$mode` WHERE `user` = ?", [$userID]);
+			$GLOBALS['db']->execute("UPDATE `leaderboard_$mode` SET `position` = `position` + 1 WHERE `position` < ? AND `position` >= ? ORDER BY `position` DESC", [$us['position'], $newT]);
 		}
 		// Finally, insert the user back.
-		$GLOBALS['db']->execute("INSERT INTO leaderboard_$mode (position, user, v) VALUES (?, ?, ?);", [$newT, $userID, $newScore]);
+		$GLOBALS['db']->execute("INSERT INTO `leaderboard_$mode` (`position`, `user`, `v`) VALUES (?, ?, ?);", [$newT, $userID, $newScore]);
 	}
 }

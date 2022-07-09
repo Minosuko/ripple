@@ -44,8 +44,7 @@ class D {
 			// Create password
 			$md5Password = password_hash(md5($_POST['p1']), PASSWORD_DEFAULT);
 			// Put some data into the db
-			$GLOBALS['db']->execute("INSERT INTO `users`(username, password_md5, salt, email, register_datetime, rank, allowed, password_version) 
-			                                     VALUES (?,        ?,            '',    ?,     ?,                 1,   1,       2);", [$_POST['u'], $md5Password, $_POST['e'], time(true)]);
+			$GLOBALS['db']->execute("INSERT INTO `users` (`username`, `password_md5`, `salt`, `email`, `register_datetime`, `rank`, `allowed`, `password_version`) VALUES (?, ?, '', ?, ?, 1, 1, 2);", [$_POST['u'], $md5Password, $_POST['e'], time()]);
 			// Get user ID
 			$uid = $GLOBALS['db']->lastInsertId();
 			// Put some data into users_stats
@@ -55,7 +54,7 @@ class D {
 				Leaderboard::Update($uid, 0, $m);
 			}
 			// Invalidate beta key
-			$GLOBALS['db']->execute('UPDATE beta_keys SET allowed = 0 WHERE key_md5 = ?', md5($_POST['k']));
+			$GLOBALS['db']->execute('UPDATE beta_keys SET allowed = 1 WHERE key_md5 = ?', md5($_POST['k']));
 			// All fine, done
 			redirect('index.php?p=3&s=lmao');
 		}
@@ -122,7 +121,7 @@ class D {
 			$GLOBALS['db']->execute('INSERT INTO password_recovery (k, u) VALUES (?, ?);', [$key, $username]);
 			require_once dirname(__FILE__).'/SimpleMailgun.php';
 			$mailer = new SimpleMailgun($MailgunConfig);
-			$mailer->Send('Ripple <noreply@'.$MailgunConfig['domain'].'>', $user['email'], 'Ripple password recovery instructions', sprintf("Hey %s! Someone, which we really hope was you, requested a password reset for your account. In case it was you, please <a href='%s'>click here</a> to reset your password on Ripple. Otherwise, silently ignore this email.", $username, 'http://'.$_SERVER['HTTP_HOST'].'/index.php?p=19&k='.$key.'&user='.$username));
+			$mailer->Send('Zamaru <noreply@'.$MailgunConfig['domain'].'>', $user['email'], 'Zamaru password recovery instructions', sprintf("Hey %s! Someone, which we really hope was you, requested a password reset for your account. In case it was you, please <a href='%s'>click here</a> to reset your password on Ripple. Otherwise, silently ignore this email.", $username, 'http://'.$_SERVER['HTTP_HOST'].'/index.php?p=19&k='.$key.'&user='.$username));
 			redirect('index.php?p=18&s=sent');
 		}
 		catch(Exception $e) {
@@ -904,11 +903,11 @@ class D {
 				throw new Exception(3);
 			}
 			// Resize
-			if (!smart_resize_image($_FILES['file']['tmp_name'], null, 100, 100, false, dirname(dirname(dirname(__FILE__))).'/a.ppy.sh/avatars/'.getUserID($_SESSION['username']).'.png', false, false, 100)) {
+			if (!smart_resize_image($_FILES['file']['tmp_name'], null, 100, 100, false, '/var/www/ripple/a.ppy.sh/avatars/'.getUserID($_SESSION['username']).'.png', false, false, 100)) {
 				throw new Exception(4);
 			}
 			/* "Convert" to png
-												if (!move_uploaded_file($_FILES["file"]["tmp_name"], dirname(dirname(dirname(__FILE__)))."/a.ppy.sh/avatars/".getUserID($_SESSION["username"]).".png")) {
+												if (!move_uploaded_file($_FILES["file"]["tmp_name"], '/var/www/ripple/a.ppy.sh/avatars/'.getUserID($_SESSION["username"]).".png")) {
 												    throw new Exception(4);
 												}*/
 			// Done, redirect to success page

@@ -32,7 +32,7 @@ class P {
 		// Recent plays table
 		echo '<table class="table table-striped table-hover">
 		<thead>
-		<tr><th class="text-left"><i class="fa fa-clock-o"></i>	Recent plays</th><th>Beatmap</th></th><th>Mode</th><th>Sent</th><th class="text-right">Score</th></tr>
+		<tr><th class="text-left"><i class="fa fa-clock-o"></i>	Recent plays</th><th>Beatmap</th></th><th>Mode</th><th>Sent</th><th class="text-right">Score</th><th class="text-center">PP</th></tr>
 		</thead>
 		<tbody>';
 		foreach ($recentPlays as $play) {
@@ -43,7 +43,7 @@ class P {
 			if ($bn) {
 				$bn = current($bn);
 			} else {
-				$bn = current($GLOBALS['db']->fetch('SELECT beatmap_md5 FROM scores WHERE id = ?', $play['id']));
+				$bn = current($GLOBALS['db']->fetch('SELECT `beatmap_md5` FROM `scores` WHERE `id` = ?', $play['id']));
 			}
 			// Get readable play_mode
 			$pm = getPlaymodeText($play['play_mode']);
@@ -54,13 +54,14 @@ class P {
 			echo '<td class="success"><p class="text-left">'.$pm.'</p></td>';
 			echo '<td class="success"><p class="text-left">'.timeDifference(time(), osuDateToUNIXTimestamp($play['time'])).'</p></td>';
 			echo '<td class="success"><p class="text-right"><b>'.number_format($play['score']).'</b></p></td>';
+			echo '<td class="success"><p class="text-right"><b>'.number_format($play['pp']).'</b></p></td>';
 			echo '</tr>';
 		}
 		echo '</tbody>';
 		// Top plays table
 		echo '<table class="table table-striped table-hover">
 		<thead>
-		<tr><th class="text-left"><i class="fa fa-trophy"></i>	Top plays</th><th>Beatmap</th></th><th>Mode</th><th>Sent</th><th class="text-right">Score</th></tr>
+		<tr><th class="text-left"><i class="fa fa-trophy"></i>	Top plays</th><th>Beatmap</th></th><th>Mode</th><th>Sent</th><th class="text-right">Score</th><th class="text-center">PP</th></tr>
 		</thead>
 		<tbody>';
 		foreach ($topPlays as $play) {
@@ -70,7 +71,7 @@ class P {
 			if ($bn) {
 				$bn = current($bn);
 			} else {
-				$bn = current($GLOBALS['db']->fetch('SELECT beatmap_md5 FROM scores WHERE id = ?', $play['id']));
+				$bn = current($GLOBALS['db']->fetch('SELECT `beatmap_md5` FROM `scores` WHERE `id` = ?', $play['id']));
 			}
 			// Get readable play_mode
 			$pm = getPlaymodeText($play['play_mode']);
@@ -81,6 +82,7 @@ class P {
 			echo '<td class="warning"><p class="text-left">'.$pm.'</p></td>';
 			echo '<td class="warning"><p class="text-left">'.timeDifference(time(), osuDateToUNIXTimestamp($play['time'])).'</p></td>';
 			echo '<td class="warning"><p class="text-right"><b>'.number_format($play['score']).'</b></p></td>';
+			echo '<td class="warning"><p class="text-right"><b>'.number_format($play['pp']).'</b></p></td>';
 			echo '</tr>';
 		}
 		echo '</tbody>';
@@ -1410,14 +1412,15 @@ class P {
 			$playCount = $userData['playcount_'.$modeForDB];
 			$totalHits = $userData['total_hits_'.$modeForDB];
 			$accuracy = $userData['avg_accuracy_'.$modeForDB];
+			$pp = $userData[$modeForDB.'_pp'];
 			$replaysWatchedByOthers = $userData['replays_watched_'.$modeForDB];
 			$country = $userData['country'];
 			$showCountry = $userData['show_country'];
 			$usernameAka = $userData['username_aka'];
 			$level = $userData['level_'.$modeForDB] - 1;
-			$latestActivity = current($GLOBALS['db']->fetch('SELECT latest_activity FROM users WHERE username = ?', $username));
-			$silenceEndTime = current($GLOBALS['db']->fetch('SELECT silence_end FROM users WHERE username = ?', $username));
-			$silenceReason = current($GLOBALS['db']->fetch('SELECT silence_reason FROM users WHERE username = ?', $username));
+			$latestActivity = current($GLOBALS['db']->fetch('SELECT `latest_activity` FROM `users` WHERE `username` = ?', $username));
+			$silenceEndTime = current($GLOBALS['db']->fetch('SELECT `silence_end` FROM `users` WHERE `username` = ?', $username));
+			$silenceReason = current($GLOBALS['db']->fetch('SELECT `silence_reason` FROM `users` WHERE `username` = ?', $username));
 			$maximumCombo = $GLOBALS['db']->fetch('SELECT max_combo FROM scores WHERE username = ? AND play_mode = ? ORDER BY max_combo DESC LIMIT 1', [$username, $m]);
 			if ($maximumCombo) {
 				$maximumCombo = current($maximumCombo);
@@ -1431,8 +1434,8 @@ class P {
 				$userStyle = current($GLOBALS['db']->fetch('SELECT user_style FROM users_stats WHERE id = ?', $u));
 			}
 			// Get top/recent plays for this mode
-			$topPlays = $GLOBALS['db']->fetchAll('SELECT * FROM scores WHERE username = ? AND completed = 3 AND play_mode = ? ORDER BY score DESC LIMIT 10', [$username, $m]);
-			$recentPlays = $GLOBALS['db']->fetchAll('SELECT * FROM scores WHERE username = ? AND completed = 3 AND play_mode = ? ORDER BY time DESC LIMIT 10', [$username, $m]);
+			$topPlays = $GLOBALS['db']->fetchAll('SELECT * FROM scores WHERE `username` = ? AND `completed` = 3 AND `play_mode` = ? ORDER BY `score` DESC LIMIT 10', [$username, $m]);
+			$recentPlays = $GLOBALS['db']->fetchAll('SELECT * FROM scores WHERE `username` = ? AND `completed` = 3 AND `play_mode` = ? ORDER BY `time` DESC LIMIT 10', [$username, $m]);
 			// Get all allowed users on Ripple
 			$allowedUsers = getAllowedUsers('id');
 			// Bold selected mode text.
@@ -1468,8 +1471,8 @@ class P {
 			// Get badges id and icon (max 6 badges)
 			$badgeID = explode(',', $userData['badges_shown']);
 			for ($i = 0; $i < count($badgeID); $i++) {
-				$badgeIcon[$i] = $GLOBALS['db']->fetch('SELECT icon FROM badges WHERE id = ?', $badgeID[$i]);
-				$badgeName[$i] = $GLOBALS['db']->fetch('SELECT name FROM badges WHERE id = ?', $badgeID[$i]);
+				$badgeIcon[$i] = $GLOBALS['db']->fetch('SELECT `icon` FROM `badges` WHERE `id` = ?', $badgeID[$i]);
+				$badgeName[$i] = $GLOBALS['db']->fetch('SELECT `name` FROM `badges` WHERE `id` = ?', $badgeID[$i]);
 				if ($badgeIcon[$i]) {
 					$badgeIcon[$i] = current($badgeIcon[$i]);
 				} else {
@@ -1574,6 +1577,10 @@ class P {
 			<td id="stats-value"><b>'.number_format($rankedScore).'</b></td>
 			</tr>
 			<tr>
+			<td id="stats-name">PP</td>
+			<td id="stats-value"><b>'.number_format($pp).'</b></td>
+			</tr>
+			<tr>
 			<td id="stats-name">Total score</td>
 			<td id="stats-value">'.number_format($totalScore).'</td>
 			<tr>
@@ -1618,7 +1625,7 @@ class P {
 			// Print top plays table (only if we have them)
 			if ($topPlays) {
 				echo '<table class="table">
-				<tr><th class="text-left"><i class="fa fa-trophy"></i>	Top plays</th><th class="text-right">Accuracy</th><th class="text-right">Score</th></tr>';
+				<tr><th class="text-left"><i class="fa fa-trophy"></i>	Top plays</th><th class="text-right">Accuracy</th><th class="text-right">Score</th><th class="text-center">PP</th></tr>';
 				for ($i = 0; $i < count($topPlays); $i++) {
 					// Get beatmap name from md5 (beatmaps_names) for this play
 					$bn = $GLOBALS['db']->fetch('SELECT beatmap_name FROM beatmaps_names WHERE beatmap_md5 = ?', $topPlays[$i]['beatmap_md5']);
@@ -1627,7 +1634,8 @@ class P {
 						echo '<tr>';
 						echo '<td class="warning"><p class="text-left">'.current($bn).' <b>'.getScoreMods($topPlays[$i]['mods']).'</b><br><small>'.timeDifference(time(), osuDateToUNIXTimestamp($topPlays[$i]['time'])).'</small>'.'</b></p></td>';
 						echo '<td class="warning"><p class="text-right">'.accuracy($topPlays[$i]['accuracy']).'%</p></td>';
-						echo '<td class="warning"><p class="text-right"><b>'.number_format($topPlays[$i]['score']).'</b>	<a href="/web/osu-getreplay-full.php?c='.$topPlays[$i]['id'].'"><i class="fa fa-star"></i></a></p></td>';
+						echo '<td class="warning"><p class="text-right"><b>'.number_format($topPlays[$i]['score']).'</b></p></td>';
+						echo '<td class="warning"><p class="text-right"><b>'.accuracy($topPlays[$i]['pp']).'</b> PP	<a href="/web/osu-getreplay-full.php?c='.$topPlays[$i]['id'].'"><i class="fa fa-star"></i></a></p></td>';
 						echo '</tr>';
 					}
 				}
@@ -1638,7 +1646,7 @@ class P {
 			// Print recent plays table (only if we have them)
 			if ($recentPlays) {
 				echo '<table class="table">
-				<tr><th class="text-left"><i class="fa fa-clock-o"></i>	Recent plays</th><th class="text-right">Accuracy</th><th class="text-right">Score</th></tr>';
+				<tr><th class="text-left"><i class="fa fa-clock-o"></i>	Recent plays</th><th class="text-right">Accuracy</th><th class="text-right">Score</th><th class="text-right">PP</th></tr>';
 				for ($i = 0; $i < count($recentPlays); $i++) {
 					// Get beatmap name from md5 (beatmaps_names) for this play
 					$bn = $GLOBALS['db']->fetch('SELECT beatmap_name FROM beatmaps_names WHERE beatmap_md5 = ?', $recentPlays[$i]['beatmap_md5']);
@@ -1648,6 +1656,7 @@ class P {
 						echo '<td class="success"><p class="text-left">'.current($bn).' <b>'.getScoreMods($recentPlays[$i]['mods']).'</b><br><small>'.timeDifference(time(), osuDateToUNIXTimestamp($recentPlays[$i]['time'])).'</small>'.'</p></td>';
 						echo '<td class="success"><p class="text-right">'.accuracy($recentPlays[$i]['accuracy']).'%</p></td>';
 						echo '<td class="success"><p class="text-right"><b>'.number_format($recentPlays[$i]['score']).'</b></p></td>';
+						echo '<td class="success"><p class="text-right"><b>'.number_format($recentPlays[$i]['pp']).'</b></p></td>';
 						echo '</tr>';
 					}
 				}
@@ -1875,7 +1884,7 @@ class P {
 		<div class="input-group"><span class="input-group-addon" id="basic-addon1"><span class="glyphicon glyphicon-lock" max-width="25%"></span></span><input type="password" name="p1" required class="form-control" placeholder="Password" aria-describedby="basic-addon1"></div><p style="line-height: 15px"></p>
 		<div class="input-group"><span class="input-group-addon" id="basic-addon1"><span class="glyphicon glyphicon-lock" max-width="25%"></span></span><input type="password" name="p2" required class="form-control" placeholder="Repeat Password" aria-describedby="basic-addon1"></div><p style="line-height: 15px"></p>
 		<div class="input-group"><span class="input-group-addon" id="basic-addon1"><span class="glyphicon glyphicon-envelope" max-width="25%"></span></span><input type="text" name="e" required class="form-control" placeholder="Email" aria-describedby="basic-addon1"></div><p style="line-height: 15px"></p>
-		<div class="input-group"><span class="input-group-addon" id="basic-addon1"><span class="glyphicon glyphicon-gift" max-width="25%"></span></span><input type="text" name="k" required class="form-control" placeholder="Beta Key" aria-describedby="basic-addon1"></div><p style="line-height: 15px"></p>
+		<div class="input-group"><input type="hidden" name="k" required class="form-control" placeholder="Beta Key" aria-describedby="basic-addon1" value="betakey"></div><p style="line-height: 15px"></p>
 		<button type="submit" class="btn btn-primary">Sign up!</button>
 		</form></div>
 		';

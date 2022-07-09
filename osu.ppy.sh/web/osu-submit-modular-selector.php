@@ -1,8 +1,12 @@
 <?php
 /*
  * Score submission.
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 */
-require_once '../inc/functions.php';
+
+include('../inc/functions.php');
 //$_POST = json_decode(file_get_contents('submit-vars.txt'),true);
 try {
 	// Output variables if we need it
@@ -48,10 +52,10 @@ try {
 	}
 	// If we have completed a song, $_POST["x"] is not set (completed value in db is 2).
 	// If we have failed/retried, $_POST["x"] is 0/1 (completed value in db is 0/1).
-	if ($_POST['x'] == 0) {
+	if ($_POST['x'] == 0 && $_POST['ft'] == 0) {
 		// We've finished a song
 		// Save score (and increase playcount)
-		$playID = saveScore($scoreDataArray, 3);
+		$playID = saveScore($scoreDataArray,3);
 		// Save replay if we played in rankable mods
 		if (isRankable($scoreDataArray[13])) {
 			saveReplay($playID);
@@ -66,12 +70,12 @@ try {
 			}
 		}
 		// Done
-		echo $GLOBALS["score_data"];
+		echo $GLOBALS["new_score_data"];
 	} else {
 		// We have failed/retried and increase only playcount
 		saveScore($scoreDataArray, $_POST['x'], false, true);
 		// Done
-		echo $GLOBALS["score_data"];
+		echo $GLOBALS["new_score_data"];
 	}
 }
 catch(Exception $e) {

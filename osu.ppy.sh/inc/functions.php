@@ -1,4 +1,5 @@
 <?php
+error_reporting(0);
 /*
  * Ripple functions file
  * include this to include the world
@@ -9,7 +10,9 @@ require_once $df.'/config.php';
 require_once $df.'/db.php';
 require_once $df.'/password_compat.php';
 require_once $df.'/Do.php';
+require_once $df.'/osu-api.php';
 require_once $df.'/Print.php';
+require_once $df.'/PP.php';
 require_once $df.'/RememberCookieHandler.php';
 require_once $df.'/PlayStyleEnum.php';
 require_once $df.'/resize.php';
@@ -70,6 +73,14 @@ function randomString($l) {
 	}
 
 	return $res;
+}
+function addMessageToDB($fuid, $to, $msg, $private = false)
+{
+	if(substr($msg,0,1) == "!"){
+		doCommand($fuid, $to, $msg, $private);
+	}
+	$table = $private ? "bancho_private_messages" : "bancho_messages";
+	$GLOBALS["db"]->execute("INSERT INTO ".$table." (`msg_from_userid`, `msg_from_username`, `msg_to`, `msg`, `time`) VALUES (?, ?, ?, ?, ?)", array($fuid, getUserUsername($fuid), $to, $msg, time()));
 }
 /*
  * generateKey
@@ -963,7 +974,7 @@ function getUserAllowed($u) {
  * @return (int) rank
 */
 function getUserRank($u) {
-	return current($GLOBALS['db']->fetch('SELECT rank FROM users WHERE username = ?', $u));
+	return current($GLOBALS['db']->fetch('SELECT `rank` FROM `users` WHERE `username` = ?', $u));
 }
 function checkWebsiteMaintenance() {
 	if (current($GLOBALS['db']->fetch("SELECT value_int FROM system_settings WHERE name = 'website_maintenance'")) == 0) {
@@ -1164,6 +1175,14 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 	$playDateTime = $scoreDataArray[16];
 	$osuVersion = $scoreDataArray[17];
 	$playModeText = getPlaymodeText($playMode);
+	
+	$acc = strval(calculateAccuracy($count300, $count100, $count50, $countGeki, $countKatu, $countMisses, $playMode));
+	$ubr = Leaderboard::GetUserMapRank($username, $beatmapHash);
+	
+	$userBefore = $GLOBALS["db"]->fetch("SELECT * FROM `users_stats` WHERE `username` = ?", [$username]);
+	$pp_cal = Cal_PP($mods, $scoreDataArray);
+	$uid = getUserID($username);
+	$ur = Leaderboard::GetUserRank($uid, $playModeText);
 	// Update country flag
 	updateCountryIfNeeded($username);
 	// Update latest activity
@@ -1180,7 +1199,7 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 	if ($completed == 2) {
 		// We've finished a song
 		// Get our best play for this beatmap
-		$topScore = $GLOBALS['db']->fetch('SELECT * FROM scores WHERE beatmap_md5 = ? AND username = ? AND play_mode = ? AND completed = 3', [$beatmapHash, $username, $playMode]);
+		$topScore = $GLOBALS['db']->fetch('SELECT * FROM `scores` WHERE `beatmap_md5` = ? AND `username` = ? AND `play_mode` = ? AND `completed` = 3', [$beatmapHash, $username, $playMode]);
 		if ($topScore) {
 			// We have a top score on this map, so it's not a first play.
 			// Check if the score that we are submitting is better than our top one
@@ -1190,7 +1209,7 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 				// Get difference (so we add only the right amount of score to total score)
 				$scoreDifference = $score - $topScore['score'];
 				// Change old best score to normal completed score
-				$GLOBALS['db']->execute('UPDATE scores SET completed = 2 WHERE id = ?', $topScore['id']);
+				$GLOBALS['db']->execute('UPDATE `scores` SET `completed` = 2 WHERE `id` = ?', $topScore['id']);
 			} else {
 				// No new best score :(
 				$completed = 2;
@@ -1206,11 +1225,11 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 		// Do total score + score difference (on our play mode) if we have a new best
 		if ($completed == 3) {
 			// Update ranked score
-			$GLOBALS['db']->execute('UPDATE users_stats SET ranked_score_'.$playModeText.'=ranked_score_'.$playModeText.'+? WHERE username = ?', [$scoreDifference, $username]);
+			$GLOBALS['db']->execute("UPDATE `users_stats` SET `ranked_score_$playModeText`= ? WHERE `username` = ?", [($userBefore['ranked_score_'.$playModeText] + $scoreDifference), $username]);
 			// Update leaderboard
 			// Ayy lmao, we don't know the score
-			$rankedscore = $GLOBALS['db']->fetch("SELECT ranked_score_$playModeText FROM users_stats WHERE username = ?", [$username]);
-			Leaderboard::Update(getUserID($username), $rankedscore["ranked_score_$playModeText"], $playModeText);
+			$pp = $GLOBALS['db']->fetch("SELECT `{$playModeText}_pp` FROM `users_stats` WHERE `username` = ?", [$username]);
+			Leaderboard::Update($uid, $rankedscore["{$playModeText}_pp"], $playModeText);
 		}
 	}
 	if ($increasePlaycount) {
@@ -1218,9 +1237,83 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 	}
 	// Add score in db if we want it
 	if ($saveScore) {
-		$acc = strval(calculateAccuracy($count300, $count100, $count50, $countGeki, $countKatu, $countMisses, $playMode));
-		$GLOBALS['db']->execute('INSERT INTO scores (id, beatmap_md5, username, score, max_combo, full_combo, mods, 300_count, 100_count, 50_count, katus_count, gekis_count, misses_count, time, play_mode, completed, accuracy) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);', [$beatmapHash, $username, $score, $maxCombo, $fullCombo, $mods, $count300, $count100, $count50, $countKatu, $countGeki, $countMisses, $playDateTime, $playMode, $completed, $acc]);
+		$GLOBALS['db']->execute("UPDATE `users_stats` SET `".$playModeText."_pp` = ? WHERE `username` = ?", [round(($userBefore[$playModeText.'_pp'] + $pp_cal),0), $username]);
+		$preScore = $GLOBALS['db']->fetch("SELECT * FROM `scores` WHERE (`beatmap_md5` = ? AND `username` = ?) ORDER BY `score` DESC",[$beatmapHash, $username]);
+		$GLOBALS['db']->execute(
+		"INSERT INTO `scores` (`beatmap_md5`, `username`, `score`, `max_combo`, `full_combo`, `mods`, `300_count`, `100_count`, `50_count`, `katus_count`, `gekis_count`, `misses_count`, `time`, `play_mode`, `completed`, `accuracy`, `pp`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", 
+		[$beatmapHash, $username, $score, $maxCombo, $fullCombo, $mods, $count300, $count100, $count50, $countKatu, $countGeki, $countMisses, $playDateTime, $playMode, $completed, $acc, $pp_cal]);
 		$r = $GLOBALS['db']->lastInsertId();
+		$userNow = $GLOBALS["db"]->fetch("SELECT * FROM `users_stats` WHERE `username` = ?", [$username]);
+		$urn = Leaderboard::GetUserRank($uid, $playModeText);
+		$OsuAPI = new OsuAPI(OSU_API_TOKEN);
+		$mapdata = $OsuAPI->get_beatmaps(['h' => $beatmapHash])[0];
+		$rowC = $GLOBALS['db']->execute("SELECT * FROM `scores` WHERE (`beatmap_md5` = ? AND `username` = ?) ORDER BY `score` DESC",[$beatmapHash, $username])->rowCount();
+		$ubrn = Leaderboard::GetUserMapRank($username, $beatmapHash);
+		// old
+		$GLOBALS["score_data"] = 
+		"beatmapId:".$mapdata["beatmap_id"].
+		"|beatmapSetId:".$mapdata["beatmapset_id"].
+		"|beatmapPlaycount:".$rowC.
+		"|beatmapPasscount:".$rowC.
+		"|approvedDate:".
+		"|chartId:overall".
+		"|chartName:Overall Ranking".
+		"|chartEndDate:".
+		"|beatmapRankingBefore:1".
+		"|beatmapRankingAfter:1".
+		"|rankedScoreBefore:".$userBefore['ranked_score_'.$playModeText].
+		"|rankedScoreAfter:".($userBefore['ranked_score_'.$playModeText] + $score).
+		"|totalScoreBefore:".$userBefore['total_score_'.$playModeText].
+		"|totalScoreAfter:".($userBefore['total_score_'.$playModeText] + $score).
+		"|playCountBefore:0".
+		"|accuracyBefore:0".
+		"|rankBefore:$ubr".
+		"|rankAfter:$ubrn".
+		"|toNextRank:0".
+		"|toNextRankUser:FokaBot".
+		"|accuracyAfter:".$acc.
+		"|achievements:".
+		"|achievements-new:".
+		"|onlineScoreId:$r";
+		// new
+		$GLOBALS["new_score_data"] = 
+		"beatmapId:".$mapdata["beatmap_id"].
+		"|beatmapSetId:".$mapdata["beatmapset_id"].
+		"|beatmapPlaycount:".$rowC.
+		"|beatmapPasscount:".$rowC.
+		"|approvedDate:".
+		"\n".
+		"chartId:beatmap".
+		"|chartUrl:https://osu.ppy.sh/b/".$mapdata["beatmap_id"].
+		"|chartName:Beatmap Ranking".
+		"|rankBefore:$ubr".
+		"|rankAfter:$ubrn".
+		"|maxComboBefore:".$preScore["max_combo"].
+		"|maxComboAfter:$maxCombo".
+		"|accuracyBefore:".$preScore["accuracy"].
+		"|rankedScoreBefore:".$preScore['score'].
+		"|rankedScoreAfter:".($preScore['score'] + $score).
+		"|accuracyAfter:".$acc.
+		"|ppBefore:".round($preScore["pp"],0).
+		"|ppAfter:".round($pp_cal,0).
+		"\n".
+		"chartId:overall".
+		"|chartUrl:https://osu.zamaru.ml/u/".$uid.
+		"|chartName:Overall Ranking".
+		"|rankBefore:$ur".
+		"|rankAfter:$urn".
+		"|maxComboBefore:".$preScore["max_combo"].
+		"|maxComboAfter:$maxCombo".
+		"|rankedScoreBefore:".$userBefore['ranked_score_'.$playModeText].
+		"|rankedScoreAfter:".($userBefore['ranked_score_'.$playModeText] + $score).
+		"|totalScoreBefore:".$userBefore['total_score_'.$playModeText].
+		"|totalScoreAfter:".($userBefore['total_score_'.$playModeText] + $score).
+		"|accuracyBefore:".$userBefore["avg_accuracy_".$playModeText].
+		"|accuracyAfter:".$userNow["avg_accuracy_".$playModeText].
+		"|ppBefore:".$userBefore[$playModeText.'_pp'].
+		"|ppAfter:".round(($userBefore[$playModeText.'_pp'] + $pp_cal),0).
+		"|achievements-new:".
+		"|onlineScoreId:$r";
 		updateAccuracy($username, $playMode);
 
 		return $r;
@@ -1237,7 +1330,7 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
  * @return (int) Play ID
 */
 function getFirstPlacePlayID($hash) {
-	$q = $GLOBALS['db']->fetch('SELECT id FROM scores WHERE beatmap_md5 = ? ORDER BY score DESC LIMIT 1', [$hash]);
+	$q = $GLOBALS['db']->fetch('SELECT `id` FROM `scores` WHERE `beatmap_md5` = ? ORDER BY `score` DESC LIMIT 1', [$hash]);
 	if ($q) {
 		return current($q);
 	} else {
@@ -1267,11 +1360,45 @@ function saveReplay($replayID) {
 }
 function increasePlaycountAndScore($playMode, $score, $username) {
 	// Increase playcount and score.
-	$GLOBALS['db']->execute('UPDATE users_stats SET playcount_'.$playMode.'=playcount_'.$playMode.'+1, total_score_'.$playMode.'=total_score_'.$playMode.'+? WHERE username = ?', [$score, $username]);
+	$GLOBALS['db']->execute('UPDATE `users_stats` SET `playcount_'.$playMode.'`=`playcount_'.$playMode.'`+1, `total_score_'.$playMode.'`=`total_score_'.$playMode.'`+? WHERE `username` = ?', [$score, $username]);
 	// As we are increasing the total score, we are also updating the level.
-	$totalScore = $GLOBALS['db']->fetch('SELECT total_score_'.$playMode.' FROM users_stats WHERE username = ?', $username);
+	$totalScore = $GLOBALS['db']->fetch('SELECT `total_score_'.$playMode.'` FROM `users_stats` WHERE `username` = ?', $username);
 	$level = getLevel($totalScore['total_score_'.$playMode]);
-	$GLOBALS['db']->execute('UPDATE users_stats SET level_'.$playMode.' = ? WHERE username = ?', [$level, $username]);
+	$GLOBALS['db']->execute('UPDATE `users_stats` SET `level_'.$playMode.'` = ? WHERE `username` = ?', [$level, $username]);
+}
+/*
+ * ChimuDirectString
+ * Parse ChimuAPI String
+ *
+*/
+function ChimuDirectString($arr, $np = false) {
+	$s = '';
+	if ($np) {
+		$s = $arr['SetId'].'.osz|'.$arr['Artist'].'|'.$arr['Title'].'|'.$arr['Creator'].'|'.$arr['RankedStatus'].'|'.$arr['ChildrenBeatmaps'][0]['DifficultyRating'].'|'.$arr['LastUpdate'].'|'.$arr['SetId'].'|'.$arr['SetId'].'|0|0|0|';
+	} else {
+		$s = $arr['SetId'].'|'.$arr['Artist'].'|'.$arr['Title'].'|'.$arr['Creator'].'|'.$arr['RankedStatus'].'|%DIFF_RATING%|'.$arr['LastUpdate'].'|'.$arr['SetId'].'|'.$arr['ChildrenBeatmaps'][0]['BeatmapId'].'|0|0|0||';
+		foreach ($arr['ChildrenBeatmaps'] as $diff) {
+			$s .= $diff['DiffName'].'@'.$diff['Mode'].',';
+		}
+		$diff_rating = 0;
+		$n = count($arr['ChildrenBeatmaps']);
+		for($x = 0; $x < $n; $x++){
+			$diff_rating = $diff_rating + $arr['ChildrenBeatmaps'][$x]['DifficultyRating'];
+		}
+		$s = rtrim($s, ',');
+		$s .= '|';
+	}
+	if($n == 0) $n++;
+	return str_replace("%DIFF_RATING%", round(($diff_rating / $n),5), $s);
+}
+/*
+ * OsuAPIDirectString
+ * Parse OsuAPI String
+ *
+*/
+function OsuAPIDirectString($arr) {
+	$s = $arr['beatmapset_id'].'.osz|'.$arr['artist'].'|'.$arr['title'].'|'.$arr['creator'].'|'.$arr['approved'].'|'.$arr['difficultyrating'].'|'.$arr['last_update'].'|'.$arr['beatmapset_id'].'|'.$arr['beatmapset_id'].'|0|0|0|';
+	return $s;
 }
 /*
  * getScoreMods
@@ -1329,6 +1456,8 @@ function getScoreMods($m) {
 	}
 	if ($m & ModsEnum::Perfect) {
 		$r .= 'PF, ';
+		// Remove SD and display only PF
+		$r = str_replace('SD, ', '', $r);
 	}
 	if ($m & ModsEnum::Key4) {
 		$r .= '4K, ';
@@ -1405,14 +1534,14 @@ function updateCountryIfNeeded($username) {
 	if (getIP() == '127.0.0.1') {
 		return;
 	}
-	$userCountry = $GLOBALS['db']->fetch('SELECT country FROM users_stats WHERE username = ?;', $username);
+	$userCountry = $GLOBALS['db']->fetch('SELECT `country` FROM `users_stats` WHERE `username` = ?;', $username);
 	if ($userCountry === false) {
 		return;
 	}
 	if ($userCountry['country'] == 'XX') {
 		$actualUserCountry = getUserCountry();
 		if ($actualUserCountry != 'XX') {
-			$GLOBALS['db']->execute('UPDATE users_stats SET country=? WHERE username = ?;', [$actualUserCountry, $username]);
+			$GLOBALS['db']->execute('UPDATE `users_stats` SET `country`=? WHERE `username` = ?;', [$actualUserCountry, $username]);
 		}
 	}
 }
@@ -1425,7 +1554,7 @@ function updateCountryIfNeeded($username) {
 function updateAccuracy($username, $playMode) {
 	$playModeText = getPlaymodeText($playMode);
 	// get best accuracy scores
-	$a = $GLOBALS['db']->fetchAll("SELECT accuracy FROM scores WHERE username = ? AND play_mode = ? AND completed = '3' ORDER BY accuracy DESC LIMIT 100;", [$username, $playMode]);
+	$a = $GLOBALS['db']->fetchAll("SELECT `accuracy` FROM `scores` WHERE `username` = ? AND `play_mode` = ? AND `completed` = '3' ORDER BY `accuracy` DESC LIMIT 100;", [$username, $playMode]);
 	// calculate weighted accuracy
 	$totalacc = 0;
 	$divideTotal = 0;
@@ -1441,7 +1570,7 @@ function updateAccuracy($username, $playMode) {
 	} else {
 		$v = 0;
 	}
-	$GLOBALS['db']->execute('UPDATE users_stats SET avg_accuracy_'.$playModeText.' = ? WHERE username = ?', [$v, $username]);
+	$GLOBALS['db']->execute('UPDATE `users_stats` SET `avg_accuracy_'.$playModeText.'` = ? WHERE `username` = ?', [$v, $username]);
 }
 /*
  * calculateAccuracy
@@ -1504,7 +1633,7 @@ function getBeatmapRankedStatus($bf, $bmd5, $everythingIsRanked) {
 		return [1];
 	} else {
 		// Return real ranked status from db
-		return $GLOBALS['db']->fetch('SELECT ranked FROM beatmaps WHERE beatmap_file = ? AND beatmap_md5 = ?', [$bf, $bmd5]);
+		return $GLOBALS['db']->fetch('SELECT `ranked` FROM `beatmaps` WHERE `beatmap_file` = ? AND `beatmap_md5` = ?', [$bf, $bmd5]);
 	}
 }
 /*
@@ -1577,8 +1706,8 @@ function printBeatmapHeader($s, $bmd5 = null) {
 */
 function printBeatmapSongInfo($bmd5) {
 	// Get song artist and title from db
-	$songArtist = $GLOBALS['db']->fetch('SELECT song_artist FROM beatmaps WHERE beatmap_md5 = ?', $bmd5);
-	$songTitle = $GLOBALS['db']->fetch('SELECT song_title FROM beatmaps WHERE beatmap_md5 = ?', $bmd5);
+	$songArtist = $GLOBALS['db']->fetch('SELECT `song_artist` FROM `beatmaps` WHERE `beatmap_md5` = ?', $bmd5);
+	$songTitle = $GLOBALS['db']->fetch('SELECT `song_title` FROM `beatmaps` WHERE `beatmap_md5` = ?', $bmd5);
 	// Check if song data is in db
 	if (!$songArtist || !$songTitle) {
 		// Not in db, set random stuff
@@ -1631,20 +1760,20 @@ function printBeatmapTopScores($bmd5, $mode, $type = 1, $user = '') {
 		$ID = getUserID($username);
 		// Friends leaderboard
 		// Get friends
-		$friends = $GLOBALS['db']->fetchAll('SELECT user2 FROM users_relationships WHERE user1 = ?', [$ID]);
+		$friends = $GLOBALS['db']->fetchAll('SELECT `user2` FROM `users_relationships` WHERE `user1` = ?', [$ID]);
 		// Score array
 		$pid = [];
 		// Get friend scores
 		foreach ($friends as $friend) {
 			$friendName = getUserUsername($friend['user2']);
-			$friendScore = $GLOBALS['db']->fetch('SELECT * FROM scores WHERE beatmap_md5 = ? AND completed = 3 AND play_mode = ? AND username = ? ORDER BY score DESC LIMIT 50', [$bmd5, $mode, $friendName]);
+			$friendScore = $GLOBALS['db']->fetch('SELECT * FROM `scores` WHERE `beatmap_md5` = ? AND `completed` = 3 AND `play_mode` = ? AND `username` = ? ORDER BY `score` DESC LIMIT 50', [$bmd5, $mode, $friendName]);
 			if ($friendScore) {
 				array_push($pid, $friendScore);
 			}
 		}
 	} else {
 		// Normal leaderboard
-		$pid = $GLOBALS['db']->fetchAll('SELECT * FROM scores WHERE beatmap_md5 = ? AND completed = 3 AND play_mode = ? ORDER BY score DESC LIMIT 50', [$bmd5, $mode]);
+		$pid = $GLOBALS['db']->fetchAll('SELECT * FROM `scores` WHERE `beatmap_md5` = ? AND `completed` = 3 AND `play_mode` = ? ORDER BY `score` DESC LIMIT 50', [$bmd5, $mode]);
 	}
 	$su = []; // Users already in the leaderboard (because we show only the best score)
 	$r = 1; // Last rank (we start from #1)
@@ -1653,7 +1782,7 @@ function printBeatmapTopScores($bmd5, $mode, $type = 1, $user = '') {
 		// Check if we haven't another score by this user in the leaderboard
 		if (!in_array($pid[$i]['username'], $su)) {
 			// New user, check if banned
-			if (current($GLOBALS['db']->fetch('SELECT allowed FROM users WHERE username = ?', $pid[$i]['username'])) != 0) {
+			if (current($GLOBALS['db']->fetch('SELECT `allowed` FROM `users` WHERE `username` = ?', $pid[$i]['username'])) != 0) {
 				// Not banned, show score
 				printBeatmapScore($pid[$i]['id'], $bmd5, $mode, $r);
 				// Increment rank
@@ -1675,7 +1804,7 @@ function printBeatmapTopScores($bmd5, $mode, $type = 1, $user = '') {
 */
 function printBeatmapScore($pid, $bmd5 = '', $mode = 0, $r = -1) {
 	// Get score data
-	$scoreData = $GLOBALS['db']->fetch('SELECT * FROM scores WHERE id = ?', $pid);
+	$scoreData = $GLOBALS['db']->fetch('SELECT * FROM `scores` WHERE `id` = ?', $pid);
 	$replayID = $scoreData['id'];
 	$playerName = $scoreData['username'];
 	$score = $scoreData['score'];
@@ -1706,7 +1835,7 @@ function printBeatmapScore($pid, $bmd5 = '', $mode = 0, $r = -1) {
 		//$rank = current($GLOBALS["db"]->fetch("SELECT COUNT(DISTINCT username) AS id FROM scores WHERE beatmap_md5 = ? AND username = ?", array($_GET["c"], $_GET["us"])));
 		// Get all scores and loop trough all until user's one is found
 		//$allScores = $GLOBALS["db"]->fetchAll("SELECT DISTINCT username FROM scores WHERE beatmap_md5 = ? AND completed = 2 ORDER BY score DESC", $bmd5);
-		$allScores = $GLOBALS['db']->fetchAll('SELECT DISTINCT username FROM scores WHERE beatmap_md5 = ? AND play_mode = ? AND completed = 3 ORDER BY score DESC', [$bmd5, $mode]);
+		$allScores = $GLOBALS['db']->fetchAll('SELECT DISTINCT `username` FROM `scores` WHERE `beatmap_md5` = ? AND `play_mode` = ? AND `completed` = 3 ORDER BY `score` DESC', [$bmd5, $mode]);
 		$su = []; // Users already in the leaderboard (we count only the best score per user)
 		$r = 1; // Last rank (we start from #1)
 		for ($i = 0; $i < count($allScores); $i++) {
@@ -1720,7 +1849,7 @@ function printBeatmapScore($pid, $bmd5 = '', $mode = 0, $r = -1) {
 				// Check if we don't have another score by this user in the leaderboard
 				if (!in_array($allScores[$i]['username'], $su)) {
 					// New user, check rank
-					if (current($GLOBALS['db']->fetch('SELECT allowed FROM users WHERE username = ?', $allScores[$i]['username'])) != 0) {
+					if (current($GLOBALS['db']->fetch('SELECT `allowed` FROM `users` WHERE `username` = ?', $allScores[$i]['username'])) != 0) {
 						// Not banned, increment rank
 						$r++;
 					}
