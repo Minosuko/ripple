@@ -394,7 +394,7 @@ class D {
 				throw new Exception('Nice troll');
 			}
 			// Check if this user exists
-			$id = current($GLOBALS['db']->fetch('SELECT id FROM users WHERE id = ?', $_POST['id']));
+			$id = current($GLOBALS['db']->fetch('SELECT `id` FROM `users` WHERE `id` = ?', $_POST['id']));
 			if (!$id) {
 				throw new Exception("That user doesn\'t exists");
 			}
@@ -410,15 +410,15 @@ class D {
 			// in order to silence him
 			//$oldse = current($GLOBALS["db"]->fetch("SELECT silence_end FROM users WHERE username = ?", array($_POST["u"])));
 			// Save new data (email, silence end and silence reason)
-			$GLOBALS['db']->execute('UPDATE users SET email = ?, silence_end = ?, silence_reason = ? WHERE id = ?', [$_POST['e'], $_POST['se'], $_POST['sr'], $_POST['id']]);
+			$GLOBALS['db']->execute('UPDATE `users` SET `email` = ?, `silence_end` = ?, `silence_reason` = ? WHERE `id` = ?', [$_POST['e'], $_POST['se'], $_POST['sr'], $_POST['id']]);
 			// Save new userpage
-			$GLOBALS['db']->execute('UPDATE users_stats SET userpage_content = ? WHERE id = ?', [$_POST['up'], $_POST['id']]);
+			$GLOBALS['db']->execute('UPDATE `users_stats` SET `userpage_content` = ? WHERE `id` = ?', [$_POST['up'], $_POST['id']]);
 			// Save new data if set (rank, allowed, UP and silence)
 			if (isset($_POST['r']) && !empty($_POST['r'])) {
-				$GLOBALS['db']->execute('UPDATE users SET rank = ? WHERE id = ?', [$_POST['r'], $_POST['id']]);
+				$GLOBALS['db']->execute('UPDATE `users` SET `rank` = ? WHERE `id` = ?', [$_POST['r'], $_POST['id']]);
 			}
 			if (isset($_POST['a'])) {
-				$GLOBALS['db']->execute('UPDATE users SET allowed = ? WHERE id = ?', [$_POST['a'], $_POST['id']]);
+				$GLOBALS['db']->execute('UPDATE `users` SET `allowed` = ? WHERE `id` = ?', [$_POST['a'], $_POST['id']]);
 			}
 			// Get username style/color
 			if (isset($_POST['c']) && !empty($_POST['c'])) {
@@ -432,7 +432,7 @@ class D {
 				$bg = '';
 			}
 			// Set username style/color/aka
-			$GLOBALS['db']->execute('UPDATE users_stats SET user_color = ?, user_style = ?, username_aka = ? WHERE id = ?', [$c, $bg, $_POST['aka'], $_POST['id']]);
+			$GLOBALS['db']->execute('UPDATE `users_stats` SET `user_color` = ?, `user_style` = ?, `username_aka` = ? WHERE `id` = ?', [$c, $bg, $_POST['aka'], $_POST['id']]);
 			// Done, redirect to success page
 			redirect('index.php?p=102&s=User edited!');
 		}

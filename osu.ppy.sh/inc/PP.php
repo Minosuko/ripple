@@ -22,7 +22,8 @@ function Cal_PP($m, $scoreDataArray) {
 	$playDateTime = $scoreDataArray[16];
 	$osuVersion = $scoreDataArray[17];
 	$acc = strval(calculateAccuracy($count300, $count100, $count50, $countGeki, $countKatu, $countMisses, $playMode));
-	$pp_cal = ((((((($score / $acc) * $maxCombo) / ($countMisses + 1) + $count300) / 100) - $count50) / 2) / 200);
+	// $pp_cal = ((((((($score / $acc) * $maxCombo) / ($countMisses + 1) + $count300) / 100) - $count50) / 2) / 200);
+	$pp_cal = (((((($score / ($count300*150)) * $maxCombo)  / ($countMisses + 15)) + ((($score / (($count100 * 50) + ($count50 * 25) + 15)) / 2)) / ($score/2)) * ($acc / 50)) / 150) * 10;
 	$pp = $pp_cal;
 	if ($m & ModsEnum::NoFail) {
 		$pp = $pp * 0.5;

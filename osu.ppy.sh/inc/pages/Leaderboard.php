@@ -15,16 +15,34 @@ class Leaderboard {
 		} else {
 			$m = $_GET['m'];
 		}
+		if (!isset($_GET['c']) || empty($_GET['c'])) {
+			$cty = '';
+		} else {
+			$cty = strtolower($_GET['c']);
+			if($cty == "XX") $xx = true;
+		}
 		// Get stats for selected mode
 		$modeForDB = getPlaymodeText($m);
 		$modeReadable = getPlaymodeText($m, true);
+		$c = getCountyList();
 		// Make sure that $m is a valid mode integer
 		$m = ($m < 0 || $m > 3 ? 0 : $m);
 		// Bold the selected mode
 		$modesText[$m] = '<b>'.$modesText[$m].'</b>';
 		// Header stuff
 		echo '<blockquote><p>Plz enjoy game.</p><footer>rrtyui</footer></blockquote>';
-		echo '<a href="index.php?p=13&m=0">'.$modesText[0].'</a> | <a href="index.php?p=13&m=1">'.$modesText[1].'</a> | <a href="index.php?p=13&m=2">'.$modesText[2].'</a> | <a href="index.php?p=13&m=3">'.$modesText[3].'</a>';
+		echo '<a href="index.php?p=13&m=0&c='.$ct.'">'.$modesText[0].'</a> | <a href="index.php?p=13&m=1&c='.$ct.'">'.$modesText[1].'</a> | <a href="index.php?p=13&m=2&c='.$ct.'">'.$modesText[2].'</a> | <a href="index.php?p=13&m=3&c='.$ct.'">'.$modesText[3].'</a>';
+		echo "<br>";
+		echo '<div class="dropdown">';
+		echo '<button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-expanded="true">';
+		echo 'Country <span class="caret"></span>';
+		echo '</button>';
+		echo '<ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1">';
+		foreach($c as $ct){
+			echo '<li role="presentation"><a role="menuitem" tabindex="-1" href="index.php?p=13&c='.$ct['code'].'&m='.$m.'"><img src="./images/flags/'.strtolower($ct['code']).'.png"/> '.$ct['display_name'].'</a></li>';
+		}
+		echo "</ul>";
+		echo "</div>";
 		// Leaderboard
 		echo '<table class="table table-striped table-hover">
 		<thead>
@@ -46,7 +64,15 @@ class Leaderboard {
 		// Print table rows
 		foreach ($leaderboard as $lbUser) {
 			// Make sure that this user is not banned
-			if ($allowedUsers[$lbUser['username']]) {
+			if(empty($cty)){
+				$check_country = true;
+			}else{
+				if((strtolower($lbUser['country']) == strtolower($cty) && $lbUser['show_country'] == 1) or $xx)
+					$check_country = true;
+				else
+					$check_country = false;
+			}
+			if ($allowedUsers[$lbUser['username']] && $check_country) {
 				// Increment rank
 				$r++;
 				// Style for top and noob players
@@ -79,7 +105,7 @@ class Leaderboard {
 	}
 
 	public static function GetUserRank($u, $mode) {
-		$query = $GLOBALS['db']->fetch("SELECT `position` FROM `leaderboard_$mode` WHERE `user` = ?;", [$u]);
+		$query = $GLOBALS['db']->fetch("SELECT `position` FROM `leaderboard_$mode` WHERE `user` = ?", [$u]);
 		if ($query !== false) {
 			$rank = (string) current($query);
 		} else {
@@ -102,6 +128,16 @@ class Leaderboard {
 			$r++;
 		}
 		return $user_rank;
+	}
+	public static function GetUserMapPP($user, $hash) {
+		$query = $GLOBALS['db']->fetch("SELECT `position` FROM `scores` WHERE `beatmap_md5` = ? AND `user` = ? ORDER BY `score` DESC;", [$hash, $user]);
+		if ($query !== false) {
+			$pp = (string) current($query);
+		} else {
+			$pp = 0;
+		}
+
+		return $pp;
 	}
 
 	public static function BuildLeaderboard() {
@@ -163,14 +199,17 @@ class Leaderboard {
 			// Otherwise, just give them the position of the target.
 			$newT = $target['position'] + $plus;
 		}
-		// Make some place for the new "place holder".
-		if ($newplayer) {
-			$GLOBALS['db']->execute("UPDATE `leaderboard_$mode` SET `position` = `position` + 1 WHERE `position` >= ? ORDER BY `position` DESC", [$newT]);
-		} else {
-			$GLOBALS['db']->execute("DELETE FROM `leaderboard_$mode` WHERE `user` = ?", [$userID]);
-			$GLOBALS['db']->execute("UPDATE `leaderboard_$mode` SET `position` = `position` + 1 WHERE `position` < ? AND `position` >= ? ORDER BY `position` DESC", [$us['position'], $newT]);
+		if($us['position'] != 1){
+			// Make some place for the new "place holder".
+			if ($newplayer) {
+				$GLOBALS['db']->execute("UPDATE `leaderboard_$mode` SET `position` = `position` + 1 WHERE `position` >= ? ORDER BY `position` DESC", [$newT]);
+			} else {
+				$GLOBALS['db']->execute("DELETE FROM `leaderboard_$mode` WHERE `user` = ?", [$userID]);
+				$GLOBALS['db']->execute("UPDATE `leaderboard_$mode` SET `position` = `position` + 1 WHERE `position` < ? AND `position` >= ? ORDER BY `position` DESC", [$us['position'], $newT]);
+				$GLOBALS['db']->execute("INSERT INTO `leaderboard_$mode` (`position`, `user`, `v`) VALUES (?, ?, ?)", [$newT, $userID, $newScore]);
+			}
+		}else{
+			$GLOBALS['db']->execute("UPDATE `leaderboard_$mode` SET `v` = ? WHERE `position` = 1 AND `user` = ?", [$newScore, $userID]);
 		}
-		// Finally, insert the user back.
-		$GLOBALS['db']->execute("INSERT INTO `leaderboard_$mode` (`position`, `user`, `v`) VALUES (?, ?, ?);", [$newT, $userID, $newScore]);
 	}
 }

@@ -56,6 +56,10 @@ function redirect($url) {
 function outputVariable($fn, $v) {
 	file_put_contents($fn, var_export($v, true), FILE_APPEND);
 }
+function getCountyList(){
+	include __DIR__ . '/country.php';
+	return $items;
+}
 /*
  * randomString
  * Generate a random string.
@@ -107,9 +111,22 @@ function generateKey() {
 	return $key;
 }
 function getIP() {
-	return getenv('REMOTE_ADDR'); // Add getenv('HTTP_FORWARDED_FOR')?: before getenv if you are using a dumb proxy. Meaning that if you try to get the user's IP with REMOTE_ADDR, it returns 127.0.0.1 or keeps saying the same IP, always.
-	// NEVER add getenv('HTTP_FORWARDED_FOR') if you're not behind a proxy.
-	// It can easily be spoofed.
+    $ipaddress = '';
+    if (getenv('HTTP_CLIENT_IP'))
+        $ipaddress = getenv('HTTP_CLIENT_IP');
+    else if(getenv('HTTP_X_FORWARDED_FOR'))
+        $ipaddress = getenv('HTTP_X_FORWARDED_FOR');
+    else if(getenv('HTTP_X_FORWARDED'))
+        $ipaddress = getenv('HTTP_X_FORWARDED');
+    else if(getenv('HTTP_FORWARDED_FOR'))
+        $ipaddress = getenv('HTTP_FORWARDED_FOR');
+    else if(getenv('HTTP_FORWARDED'))
+       $ipaddress = getenv('HTTP_FORWARDED');
+    else if(getenv('REMOTE_ADDR'))
+        $ipaddress = getenv('REMOTE_ADDR');
+    else
+        $ipaddress = '127.0.0.1';
+	return $ipaddress;
 
 }
 /****************************************
@@ -1178,6 +1195,7 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 	
 	$acc = strval(calculateAccuracy($count300, $count100, $count50, $countGeki, $countKatu, $countMisses, $playMode));
 	$ubr = Leaderboard::GetUserMapRank($username, $beatmapHash);
+	$ubpp = Leaderboard::GetUserMapPP($username, $beatmapHash);
 	
 	$userBefore = $GLOBALS["db"]->fetch("SELECT * FROM `users_stats` WHERE `username` = ?", [$username]);
 	$pp_cal = Cal_PP($mods, $scoreDataArray);
@@ -1228,8 +1246,7 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 			$GLOBALS['db']->execute("UPDATE `users_stats` SET `ranked_score_$playModeText`= ? WHERE `username` = ?", [($userBefore['ranked_score_'.$playModeText] + $scoreDifference), $username]);
 			// Update leaderboard
 			// Ayy lmao, we don't know the score
-			$pp = $GLOBALS['db']->fetch("SELECT `{$playModeText}_pp` FROM `users_stats` WHERE `username` = ?", [$username]);
-			Leaderboard::Update($uid, $rankedscore["{$playModeText}_pp"], $playModeText);
+			Leaderboard::Update($uid, round(($userBefore[$playModeText.'_pp'] + $pp_cal),0), $playModeText);
 		}
 	}
 	if ($increasePlaycount) {
@@ -1237,18 +1254,20 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 	}
 	// Add score in db if we want it
 	if ($saveScore) {
-		$GLOBALS['db']->execute("UPDATE `users_stats` SET `".$playModeText."_pp` = ? WHERE `username` = ?", [round(($userBefore[$playModeText.'_pp'] + $pp_cal),0), $username]);
 		$preScore = $GLOBALS['db']->fetch("SELECT * FROM `scores` WHERE (`beatmap_md5` = ? AND `username` = ?) ORDER BY `score` DESC",[$beatmapHash, $username]);
 		$GLOBALS['db']->execute(
 		"INSERT INTO `scores` (`beatmap_md5`, `username`, `score`, `max_combo`, `full_combo`, `mods`, `300_count`, `100_count`, `50_count`, `katus_count`, `gekis_count`, `misses_count`, `time`, `play_mode`, `completed`, `accuracy`, `pp`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", 
 		[$beatmapHash, $username, $score, $maxCombo, $fullCombo, $mods, $count300, $count100, $count50, $countKatu, $countGeki, $countMisses, $playDateTime, $playMode, $completed, $acc, $pp_cal]);
 		$r = $GLOBALS['db']->lastInsertId();
-		$userNow = $GLOBALS["db"]->fetch("SELECT * FROM `users_stats` WHERE `username` = ?", [$username]);
+		$ubnpp = round(($userBefore[$playModeText.'_pp'] + $pp_cal),0);
+		if($pp_cal < $ubpp) $ubnpp = $ubnpp - ($ubpp - $pp_cal);
+		$GLOBALS['db']->execute("UPDATE `users_stats` SET `".$playModeText."_pp` = ? WHERE `username` = ?", [$ubnpp, $username]);
 		$urn = Leaderboard::GetUserRank($uid, $playModeText);
 		$OsuAPI = new OsuAPI(OSU_API_TOKEN);
 		$mapdata = $OsuAPI->get_beatmaps(['h' => $beatmapHash])[0];
 		$rowC = $GLOBALS['db']->execute("SELECT * FROM `scores` WHERE (`beatmap_md5` = ? AND `username` = ?) ORDER BY `score` DESC",[$beatmapHash, $username])->rowCount();
 		$ubrn = Leaderboard::GetUserMapRank($username, $beatmapHash);
+		$userNow = $GLOBALS["db"]->fetch("SELECT * FROM `users_stats` WHERE `username` = ?", [$username]);
 		// old
 		$GLOBALS["score_data"] = 
 		"beatmapId:".$mapdata["beatmap_id"].
@@ -1311,7 +1330,7 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 		"|accuracyBefore:".$userBefore["avg_accuracy_".$playModeText].
 		"|accuracyAfter:".$userNow["avg_accuracy_".$playModeText].
 		"|ppBefore:".$userBefore[$playModeText.'_pp'].
-		"|ppAfter:".round(($userBefore[$playModeText.'_pp'] + $pp_cal),0).
+		"|ppAfter:".$ubnpp.
 		"|achievements-new:".
 		"|onlineScoreId:$r";
 		updateAccuracy($username, $playMode);
@@ -1782,7 +1801,7 @@ function printBeatmapTopScores($bmd5, $mode, $type = 1, $user = '') {
 		// Check if we haven't another score by this user in the leaderboard
 		if (!in_array($pid[$i]['username'], $su)) {
 			// New user, check if banned
-			if (current($GLOBALS['db']->fetch('SELECT `allowed` FROM `users` WHERE `username` = ?', $pid[$i]['username'])) != 0) {
+			if (current($GLOBALS['db']->fetch('SELECT `allowed` FROM `users` WHERE `username` = ?', [$pid[$i]['username']])) != 0) {
 				// Not banned, show score
 				printBeatmapScore($pid[$i]['id'], $bmd5, $mode, $r);
 				// Increment rank
@@ -1804,7 +1823,7 @@ function printBeatmapTopScores($bmd5, $mode, $type = 1, $user = '') {
 */
 function printBeatmapScore($pid, $bmd5 = '', $mode = 0, $r = -1) {
 	// Get score data
-	$scoreData = $GLOBALS['db']->fetch('SELECT * FROM `scores` WHERE `id` = ?', $pid);
+	$scoreData = $GLOBALS['db']->fetch('SELECT * FROM `scores` WHERE `id` = ?', [$pid]);
 	$replayID = $scoreData['id'];
 	$playerName = $scoreData['username'];
 	$score = $scoreData['score'];
@@ -1818,6 +1837,7 @@ function printBeatmapScore($pid, $bmd5 = '', $mode = 0, $r = -1) {
 	$fullCombo = $scoreData['full_combo'];
 	$mods = $scoreData['mods'];
 	$actualDate = osuDateToUNIXTimestamp($scoreData['time']);
+	$rank = 1;
 	// Check if this score has a replay
 	if (file_exists('../replays/replay_'.$replayID.'.osr')) {
 		$hasReplay = 1;
