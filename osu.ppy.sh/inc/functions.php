@@ -1196,6 +1196,8 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 	$acc = strval(calculateAccuracy($count300, $count100, $count50, $countGeki, $countKatu, $countMisses, $playMode));
 	$ubr = Leaderboard::GetUserMapRank($username, $beatmapHash);
 	$ubpp = Leaderboard::GetUserMapPP($username, $beatmapHash);
+	$ubnpp = round(($userBefore[$playModeText.'_pp'] + $pp_cal),0);
+	if($pp_cal < $ubpp) $ubnpp = $ubnpp - ($ubpp - $pp_cal);
 	
 	$userBefore = $GLOBALS["db"]->fetch("SELECT * FROM `users_stats` WHERE `username` = ?", [$username]);
 	$pp_cal = Cal_PP($mods, $scoreDataArray);
@@ -1246,6 +1248,7 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 			$GLOBALS['db']->execute("UPDATE `users_stats` SET `ranked_score_$playModeText`= ? WHERE `username` = ?", [($userBefore['ranked_score_'.$playModeText] + $scoreDifference), $username]);
 			// Update leaderboard
 			// Ayy lmao, we don't know the score
+			$GLOBALS['db']->execute("UPDATE `users_stats` SET `".$playModeText."_pp` = ? WHERE `username` = ?", [$ubnpp, $username]);
 			Leaderboard::Update($uid, round(($userBefore[$playModeText.'_pp'] + $pp_cal),0), $playModeText);
 		}
 	}
@@ -1259,9 +1262,6 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 		"INSERT INTO `scores` (`beatmap_md5`, `username`, `score`, `max_combo`, `full_combo`, `mods`, `300_count`, `100_count`, `50_count`, `katus_count`, `gekis_count`, `misses_count`, `time`, `play_mode`, `completed`, `accuracy`, `pp`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", 
 		[$beatmapHash, $username, $score, $maxCombo, $fullCombo, $mods, $count300, $count100, $count50, $countKatu, $countGeki, $countMisses, $playDateTime, $playMode, $completed, $acc, $pp_cal]);
 		$r = $GLOBALS['db']->lastInsertId();
-		$ubnpp = round(($userBefore[$playModeText.'_pp'] + $pp_cal),0);
-		if($pp_cal < $ubpp) $ubnpp = $ubnpp - ($ubpp - $pp_cal);
-		$GLOBALS['db']->execute("UPDATE `users_stats` SET `".$playModeText."_pp` = ? WHERE `username` = ?", [$ubnpp, $username]);
 		$urn = Leaderboard::GetUserRank($uid, $playModeText);
 		$OsuAPI = new OsuAPI(OSU_API_TOKEN);
 		$mapdata = $OsuAPI->get_beatmaps(['h' => $beatmapHash])[0];
