@@ -6,6 +6,11 @@ Apart from the usual stuff you'll find even in the shittiest of custom/private b
 
 The source code you can find in here is not the current development branch. ~~Development of Ripple is now [closed source](https://ripple.moe/blog/posts/going-closed-source) (since the 19/04/16)~~ (see below); this code is provided just because we're pretty much the only fully-fledged osu! private server being open source, and we don't to make people completely unable to make private servers unless they do them from scratch. Keep in mind that the code is not optimised and not good for massive userbases, so you probably want to have knowledge in Python and PHP to host it.
 
+
+Also i moded the source code for the better ripple private server code :3
+(used on [Zamaru Private Server](https://osu.zamaru.ml))
+
+
 **NO SUPPORT IS PROVIDED FOR ANYTHING THAT HAS TO DEAL WITH THIS CODE. USE AT YOUR OWN AND SOLE RISK.**
 
 Credits to the Ripple dev team (Nyo / Howl / Avail) in your private server are appreciated, but not required. You can host it as long as you comply with the [license](LICENSE) (which basically allows you to do anything, really.)
