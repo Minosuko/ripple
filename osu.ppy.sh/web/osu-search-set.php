@@ -4,9 +4,6 @@
  * Thanks to Avail for request/response structure :3
 */
 require_once '../inc/functions.php';
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 try {
 	// Check if everything is set
 	if (!isset($_GET['u']) || !isset($_GET['h']) || empty($_GET['u']) || empty($_GET['h'])) {
