@@ -1193,13 +1193,13 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 	$osuVersion = $scoreDataArray[17];
 	$playModeText = getPlaymodeText($playMode);
 	
+	$pp_cal = Cal_PP($mods, $scoreDataArray);
 	$acc = strval(calculateAccuracy($count300, $count100, $count50, $countGeki, $countKatu, $countMisses, $playMode));
 	$ubr = Leaderboard::GetUserMapRank($username, $beatmapHash);
 	$ubpp = Leaderboard::GetUserMapPP($username, $beatmapHash);
 	$ubnpp = round(($userBefore[$playModeText.'_pp'] + $pp_cal),0);
 	$userBefore = $GLOBALS["db"]->fetch("SELECT * FROM `users_stats` WHERE `username` = ?", [$username]);
 	if($pp_cal < $ubpp) $ubnpp = $ubnpp - ($ubpp - $pp_cal);
-	$pp_cal = Cal_PP($mods, $scoreDataArray);
 	$uid = getUserID($username);
 	$ur = Leaderboard::GetUserRank($uid, $playModeText);
 	// Update country flag
