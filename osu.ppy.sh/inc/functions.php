@@ -1197,9 +1197,8 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 	$ubr = Leaderboard::GetUserMapRank($username, $beatmapHash);
 	$ubpp = Leaderboard::GetUserMapPP($username, $beatmapHash);
 	$ubnpp = round(($userBefore[$playModeText.'_pp'] + $pp_cal),0);
-	if($pp_cal < $ubpp) $ubnpp = $ubnpp - ($ubpp - $pp_cal);
-	
 	$userBefore = $GLOBALS["db"]->fetch("SELECT * FROM `users_stats` WHERE `username` = ?", [$username]);
+	if($pp_cal < $ubpp) $ubnpp = $ubnpp - ($ubpp - $pp_cal);
 	$pp_cal = Cal_PP($mods, $scoreDataArray);
 	$uid = getUserID($username);
 	$ur = Leaderboard::GetUserRank($uid, $playModeText);
