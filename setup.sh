@@ -6,6 +6,7 @@ sudo apt install gcc make autoconf libc-dev pkg-config libmcrypt-dev php-pear ph
 pecl channel-update pecl.php.net
 pecl update-channels
 pecl install mcrypt
+cp nginx /etc
 sudo systemctyl reload php-fpm
 sudo systemctyl reload nginx
 sudo apt-get install python3
