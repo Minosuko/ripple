@@ -90,6 +90,7 @@ try {
 	}
 	echo $output;
 	// bmapid.osz|Artist|Song name|mapper|ranked(1/0)|idk(prob star rating)|last update|bmap id again|topic id tho|has video(0/1)|0|0||Diff 1@mode,Diff 2@mode
+	// echo file_get_contents("https://osu.ppy.sh//web/osu-search.php?u=UserName&h=********************************&r=".$_GET['r']."&q=".$_GET['q']."&m=".$_GET['m']."&p=".$_GET['p']);
 
 }
 catch(Exception $e) {
