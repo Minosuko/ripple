@@ -15,7 +15,4 @@ Also i moded the source code for the better ripple private server code :3
 
 Credits to the Ripple dev team (Nyo / Howl / Avail) in your private server are appreciated, but not required. You can host it as long as you comply with the [license](LICENSE) (which basically allows you to do anything, really.)
 
-## [Setting up](https://github.com/osuripple/ripple/wiki/How-to-setup-ripple)
-
-# [Actually, we're open source again.](http://ripple.moe/blog/posts/going-back-open-source)
-
+## [Setting up](https://github.com/osuripple/ripple/wiki/Server-status-setup)
