@@ -2,10 +2,7 @@
 // Custom PP calculator
 function Cal_PP($m, $scoreDataArray) {
 	require_once dirname(__FILE__).'/ModsEnum.php';
-	$r = '';
 	$beatmapHash = $scoreDataArray[0];
-	$username = rtrim($scoreDataArray[1], ' ');
-	//$??	 		= $scoreDataArray[2];
 	$count300 = $scoreDataArray[3];
 	$count100 = $scoreDataArray[4];
 	$count50 = $scoreDataArray[5];
@@ -14,104 +11,110 @@ function Cal_PP($m, $scoreDataArray) {
 	$countMisses = $scoreDataArray[8];
 	$score = $scoreDataArray[9];
 	$maxCombo = $scoreDataArray[10];
-	$fullCombo = $scoreDataArray[11] == 'True';
-	$rank = $scoreDataArray[12];
-	$mods = $scoreDataArray[13];
-	$passed = $scoreDataArray[14] == 'True';
 	$playMode = $scoreDataArray[15];
-	$playDateTime = $scoreDataArray[16];
-	$osuVersion = $scoreDataArray[17];
 	$acc = strval(calculateAccuracy($count300, $count100, $count50, $countGeki, $countKatu, $countMisses, $playMode));
-	// $pp_cal = ((((((($score / $acc) * $maxCombo) / ($countMisses + 1) + $count300) / 100) - $count50) / 2) / 200);
-	$pp_cal = (((((($score / ($count300*150)) * $maxCombo)  / ($countMisses + 15)) + ((($score / (($count100 * 50) + ($count50 * 25) + 15)) / 2)) / ($score/2)) * ($acc / 50)) / 150) * 10;
-	$pp = $pp_cal;
+	$sv = 1;
+	$r = '+';
+	if ($m & ModsEnum::None) {
+		$r .= 'NM';
+	}
 	if ($m & ModsEnum::NoFail) {
-		$pp = $pp * 0.5;
+		$r .= 'NF';
 	}
 	if ($m & ModsEnum::Easy) {
-		$pp = $pp * 0.85;
+		$r .= 'EZ';
 	}
 	if ($m & ModsEnum::NoVideo) {
-		$pp = $pp * 1;
+		$r .= 'TD';
 	}
 	if ($m & ModsEnum::Hidden) {
-		$pp = $pp * 1.5;
+		$r .= 'HD';
 	}
 	if ($m & ModsEnum::HardRock) {
-		$pp = $pp * 1.5;
+		$r .= 'HR';
 	}
 	if ($m & ModsEnum::SuddenDeath) {
-		$pp = $pp * 1.75;
+		$r .= 'SD';
 	}
 	if ($m & ModsEnum::DoubleTime) {
-		$pp = $pp * 1.5;
+		$r .= 'DT';
 	}
 	if ($m & ModsEnum::Relax) {
-		$pp = $pp * 0.25;
+		$r .= 'RX';
 	}
 	if ($m & ModsEnum::HalfTime) {
-		$pp = $pp * 0.85;
+		$r .= 'HT';
 	}
 	if ($m & ModsEnum::Nightcore) {
-		$pp = $pp * 1.5;
+		$r .= 'NC';
 	}
 	if ($m & ModsEnum::Flashlight) {
-		$pp = $pp * 1.25;
+		$r .= 'FL';
 	}
 	if ($m & ModsEnum::Autoplay) {
-		$pp = $pp * 0;
+		$r .= 'AP';
 	}
 	if ($m & ModsEnum::SpunOut) {
-		$pp = $pp * 0;
+		$r .= 'SO';
 	}
 	if ($m & ModsEnum::Relax2) {
-		$pp = $pp * 0;
+		$r .= 'AP';
 	}
 	if ($m & ModsEnum::Perfect) {
-		$pp = $pp * 2;
+		$r .= 'PF';
 	}
 	if ($m & ModsEnum::Key4) {
-		$pp = $pp * 1;
+		$r .= '4K';
 	}
 	if ($m & ModsEnum::Key5) {
-		$pp = $pp * 1.15;
+		$r .= '5K';
 	}
 	if ($m & ModsEnum::Key6) {
-		$pp = $pp * 1.25;
+		$r .= '6K';
 	}
 	if ($m & ModsEnum::Key7) {
-		$pp = $pp * 1.65;
+		$r .= '7K';
 	}
 	if ($m & ModsEnum::Key8) {
-		$pp = $pp * 1.85;
+		$r .= '8K';
 	}
 	if ($m & ModsEnum::keyMod) {
-		$pp = $pp * 1;
+		$r .= '';
 	}
 	if ($m & ModsEnum::FadeIn) {
-		$pp = $pp * 1.5;
+		$r .= 'FD';
 	}
 	if ($m & ModsEnum::Random) {
-		$pp = $pp * 1.5;
+		$r .= 'RD';
 	}
 	if ($m & ModsEnum::LastMod) {
-		$pp = $pp * 0;
+		$r .= 'CN';
 	}
 	if ($m & ModsEnum::Key9) {
-		$pp = $pp * 1.95;
+		$r .= '9K';
 	}
 	if ($m & ModsEnum::Key10) {
-		$pp = $pp * 2;
+		$r .= '10K';
 	}
 	if ($m & ModsEnum::Key1) {
-		$pp = $pp * 0.25;
+		$r .= '1K';
 	}
 	if ($m & ModsEnum::Key3) {
-		$pp = $pp * 0.50;
+		$r .= '3K';
 	}
 	if ($m & ModsEnum::Key2) {
-		$pp = $pp * 0.75;
+		$r .= '2K';
 	}
-	return $pp;
+	if ($m & ModsEnum::Mirror) {
+		$r .= 'MN';
+	}
+	if ($m & ModsEnum::Mirror) {
+		$sv = 1;
+	}
+	
+	system("curl https://osu.ppy.sh/osu/$beatmap_id -silent | oppai - $r {$acc}% {$count100}x100 ($count150)x50 {$countMisses}m {$maxCombo}x scorev{$sv} -m{$playMode}> a.txt");
+	$input_line = file_get_contents("a.txt");
+	preg_match('/(.*) pp/', $input_line, $output_array);
+	return $output_array[1];
 }
 ?>

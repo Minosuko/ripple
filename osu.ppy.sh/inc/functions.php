@@ -1192,13 +1192,12 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 	$playDateTime = $scoreDataArray[16];
 	$osuVersion = $scoreDataArray[17];
 	$playModeText = getPlaymodeText($playMode);
-	
 	$pp_cal = Cal_PP($mods, $scoreDataArray);
 	$acc = strval(calculateAccuracy($count300, $count100, $count50, $countGeki, $countKatu, $countMisses, $playMode));
 	$ubr = Leaderboard::GetUserMapRank($username, $beatmapHash);
 	$ubpp = Leaderboard::GetUserMapPP($username, $beatmapHash);
-	$ubnpp = round(($userBefore[$playModeText.'_pp'] + $pp_cal),0);
 	$userBefore = $GLOBALS["db"]->fetch("SELECT * FROM `users_stats` WHERE `username` = ?", [$username]);
+	$ubnpp = round(($userBefore[$playModeText.'_pp'] + $pp_cal),0);
 	if($pp_cal < $ubpp) $ubnpp = $ubnpp - ($ubpp - $pp_cal);
 	$uid = getUserID($username);
 	$ur = Leaderboard::GetUserRank($uid, $playModeText);
@@ -1435,7 +1434,7 @@ function getScoreMods($m) {
 		$r .= 'EZ, ';
 	}
 	if ($m & ModsEnum::NoVideo) {
-		$r .= 'NV, ';
+		$r .= 'TD, ';
 	}
 	if ($m & ModsEnum::Hidden) {
 		$r .= 'HD, ';
@@ -1474,8 +1473,6 @@ function getScoreMods($m) {
 	}
 	if ($m & ModsEnum::Perfect) {
 		$r .= 'PF, ';
-		// Remove SD and display only PF
-		$r = str_replace('SD, ', '', $r);
 	}
 	if ($m & ModsEnum::Key4) {
 		$r .= '4K, ';
