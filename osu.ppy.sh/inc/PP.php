@@ -15,16 +15,13 @@ function Cal_PP($m, $scoreDataArray, $beatmap_id) {
 	$acc = strval(calculateAccuracy($count300, $count100, $count50, $countGeki, $countKatu, $countMisses, $playMode));
 	$sv = 1;
 	$r = '+';
-	if ($m & ModsEnum::None) {
-		$r .= 'NM';
-	}
 	if ($m & ModsEnum::NoFail) {
 		$r .= 'NF';
 	}
 	if ($m & ModsEnum::Easy) {
 		$r .= 'EZ';
 	}
-	if ($m & ModsEnum::NoVideo) {
+	if ($m & ModsEnum::TouchDevice) {
 		$r .= 'TD';
 	}
 	if ($m & ModsEnum::Hidden) {
@@ -111,14 +108,16 @@ function Cal_PP($m, $scoreDataArray, $beatmap_id) {
 	if ($m & ModsEnum::Mirror) {
 		$sv = 1;
 	}
+	if($r == "+") $r = "+NM";
 	if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-		$oppai = "oppai";
+		$oppai = __DIR__ . "\\oppai.exe";
 	} else {
-		$oppai = "./oppai";
+		$oppai = __DIR__ . "/oppai";
 	}
-	system("curl https://osu.ppy.sh/osu/$beatmap_id -silent | $oppai - $r {$acc}% {$count100}x100 ($count150)x50 {$countMisses}m {$maxCombo}x scorev{$sv} -m{$playMode}> a.txt");
-	$input_line = file_get_contents("a.txt");
+	system("curl https://osu.ppy.sh/osu/$beatmap_id -silent | $oppai - $r {$acc}% {$count100}x100 {$count50}x50 {$countMisses}m {$maxCombo}x scorev{$sv} -m{$playMode} > " . __DIR__ . "/a.txt");
+	$input_line = file_get_contents(__DIR__ . "/a.txt");
 	preg_match('/(.*) pp/', $input_line, $output_array);
+	unlink(__DIR__ . "/a.txt");
 	return $output_array[1];
 }
 ?>
