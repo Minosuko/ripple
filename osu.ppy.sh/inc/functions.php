@@ -1192,7 +1192,8 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 	$playDateTime = $scoreDataArray[16];
 	$osuVersion = $scoreDataArray[17];
 	$playModeText = getPlaymodeText($playMode);
-	$pp_cal = Cal_PP($mods, $scoreDataArray);
+	$mapdata = $OsuAPI->get_beatmaps(['h' => $beatmapHash])[0];
+	$pp_cal = Cal_PP($mods, $scoreDataArray, $mapdata["beatmap_id"]);
 	$acc = strval(calculateAccuracy($count300, $count100, $count50, $countGeki, $countKatu, $countMisses, $playMode));
 	$ubr = Leaderboard::GetUserMapRank($username, $beatmapHash);
 	$ubpp = Leaderboard::GetUserMapPP($username, $beatmapHash);
@@ -1262,7 +1263,6 @@ function saveScore($scoreDataArray, $completed = 2, $saveScore = true, $increase
 		$r = $GLOBALS['db']->lastInsertId();
 		$urn = Leaderboard::GetUserRank($uid, $playModeText);
 		$OsuAPI = new OsuAPI(OSU_API_TOKEN);
-		$mapdata = $OsuAPI->get_beatmaps(['h' => $beatmapHash])[0];
 		$rowC = $GLOBALS['db']->execute("SELECT * FROM `scores` WHERE (`beatmap_md5` = ? AND `username` = ?) ORDER BY `score` DESC",[$beatmapHash, $username])->rowCount();
 		$ubrn = Leaderboard::GetUserMapRank($username, $beatmapHash);
 		$userNow = $GLOBALS["db"]->fetch("SELECT * FROM `users_stats` WHERE `username` = ?", [$username]);
@@ -1433,7 +1433,7 @@ function getScoreMods($m) {
 	if ($m & ModsEnum::Easy) {
 		$r .= 'EZ, ';
 	}
-	if ($m & ModsEnum::NoVideo) {
+	if ($m & ModsEnum::TouchDevice) {
 		$r .= 'TD, ';
 	}
 	if ($m & ModsEnum::Hidden) {

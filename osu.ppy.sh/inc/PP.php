@@ -1,6 +1,6 @@
 <?php
 // Custom PP calculator
-function Cal_PP($m, $scoreDataArray) {
+function Cal_PP($m, $scoreDataArray, $beatmap_id) {
 	require_once dirname(__FILE__).'/ModsEnum.php';
 	$beatmapHash = $scoreDataArray[0];
 	$count300 = $scoreDataArray[3];
@@ -111,8 +111,7 @@ function Cal_PP($m, $scoreDataArray) {
 	if ($m & ModsEnum::Mirror) {
 		$sv = 1;
 	}
-	
-	system("curl https://osu.ppy.sh/osu/$beatmap_id -silent | oppai - $r {$acc}% {$count100}x100 ($count150)x50 {$countMisses}m {$maxCombo}x scorev{$sv} -m{$playMode}> a.txt");
+	system("curl https://osu.ppy.sh/osu/$beatmap_id -silent | ./oppai - $r {$acc}% {$count100}x100 ($count150)x50 {$countMisses}m {$maxCombo}x scorev{$sv} -m{$playMode}> a.txt");
 	$input_line = file_get_contents("a.txt");
 	preg_match('/(.*) pp/', $input_line, $output_array);
 	return $output_array[1];
