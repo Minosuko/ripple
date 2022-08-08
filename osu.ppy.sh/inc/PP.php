@@ -105,8 +105,8 @@ function Cal_PP($m, $scoreDataArray, $beatmap_id) {
 	if ($m & ModsEnum::Mirror) {
 		$r .= 'MN';
 	}
-	if ($m & ModsEnum::Mirror) {
-		$sv = 1;
+	if ($m & ModsEnum::ScoreV2) {
+		$sv = 2;
 	}
 	if($r == "+") $r = "+NM";
 	if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
